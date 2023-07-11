@@ -47,7 +47,7 @@ cv::Mat Img::get_white_lane(const cv::Mat& mat, const int& n_k)
 		}
 	}
 	std::sort(center_lum_list.begin(), center_lum_list.end());
-	const auto white_metrics = max_mean	- center_lum_list[(size_t)n_k - 2];
+	const auto white_metrics = max_mean - center_lum_list[(size_t)n_k - 2];
 	const auto is_white = white_metrics > 40 && max_mean > 130;
 
 	const cv::Vec3b lane_color = is_white ? p_km_centers[max_mean_idx] : cv::Vec3f(255.0f, 255.0f, 255.0f);

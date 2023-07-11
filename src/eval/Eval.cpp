@@ -65,7 +65,7 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 	cv::resize(video_img, video_img, cv::Size(), g_ratio_rev, g_ratio_rev);
 	cv::resize(ortho_org_img, ortho_img, cv::Size(), g_ratio_rev, g_ratio_rev);
 
-	uint64_t experiments_id = 0;
+	uint64_t experiment_id = 0;
 	while (true)
 	{
 		std::string input;
@@ -118,7 +118,7 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 		std::cout << "transformed_pt: " << transformed_pt << std::endl;
 		std::cout << "misalignment: " << misalignment_vec << " (x_dir [m], y_dir [m])" << std::endl;
 		std::cout << "misalignment: " << misalignment_norm << " [m]" << std::endl;
-		std::cout << "ortho_lanes_inf(lane_dir.x, lane_dir.y, lane_latio[ortho / video]): " 
+		std::cout << "ortho_lanes_inf(lane_dir.x, lane_dir.y, lane_latio[ortho / video]): "
 			<< lanes_inf_map.at<cv::Vec4f>(static_cast<cv::Point>(g_clicked_video_point_org)) << std::endl;
 
 		cv::circle(ortho_result_img, transformed_pt, 3, cv::Scalar(0, 0, 255), -1);
@@ -128,8 +128,8 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 		cv::waitKey(0);
 
 		cv::destroyAllWindows();
-		const auto eval_path = std::format("io_images/ortho/{}_eval/result{}.png", video_code, experiments_id);
+		const auto eval_path = std::format("io_images/ortho/{}_eval/result{}.png", video_code, experiment_id);
 		cv::imwrite(eval_path, ortho_result_img);
-		experiments_id++;
+		experiment_id++;
 	}
 }

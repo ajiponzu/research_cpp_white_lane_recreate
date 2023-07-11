@@ -1,7 +1,7 @@
 #include "Process.h"
 #include "Functions.h"
 
-//#define TEST
+#define TEST
 
 #ifdef TEST
 
