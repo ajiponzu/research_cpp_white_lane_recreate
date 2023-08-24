@@ -12,10 +12,10 @@ void test()
 	//const std::string video_code = "yugata";
 
 	const std::string ortho_code = "ortho";
-	const int road_num = 4;
 	const float meter_per_pix = 0.2f;
 
-	Eval::Run(video_code, ortho_code, road_num, meter_per_pix);
+	Eval::Run(video_code, ortho_code, meter_per_pix);
+	//PreMethodEval::Run(video_code, ortho_code, meter_per_pix);
 }
 
 #else
