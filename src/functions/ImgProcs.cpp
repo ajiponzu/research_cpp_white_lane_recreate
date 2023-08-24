@@ -53,15 +53,15 @@ cv::Mat Img::get_white_lane(const cv::Mat& mat, const int& n_k)
 	const cv::Vec3b lane_color = is_white ? p_km_centers[max_mean_idx] : cv::Vec3f(255.0f, 255.0f, 255.0f);
 	const cv::Vec3b bg_color = p_km_centers[min_mean_idx];
 	auto pix_lamda = [&](cv::Vec3b& pix, const int* pos)
-	{
-		auto new_color = cv::Vec3b(128, 128, 128);
-		if (pix == lane_color)
-			new_color = cv::Vec3b(255, 255, 255);
-		else if (pix == bg_color)
-			new_color = cv::Vec3b(0, 0, 0);
+		{
+			auto new_color = cv::Vec3b(128, 128, 128);
+			if (pix == lane_color)
+				new_color = cv::Vec3b(255, 255, 255);
+			else if (pix == bg_color)
+				new_color = cv::Vec3b(0, 0, 0);
 
-		pix = new_color;
-	};
+			pix = new_color;
+		};
 	result.forEach<cv::Vec3b>(pix_lamda);
 
 	return result;

@@ -13,8 +13,8 @@ static std::vector<cv::Point> g_correct_ortho_points;
 static std::vector<cv::Point2f> g_selected_video_org_points;
 static std::vector<cv::Point2f> g_correct_ortho_org_points;
 
-static const double g_RATIO = 2.0;
-static const double g_RATIO_REV = 0.5;
+static const double g_RATIO = 2.5;
+static const double g_RATIO_REV = 0.4;
 
 static void recv_mouse_msg(int event, int x, int y, int flag, void* callBack) {}
 
@@ -91,6 +91,7 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 	uint64_t experiment_id = 0;
 	while (true)
 	{
+		std::system("cls");
 		std::string input;
 		std::cout << "Eval system: continue? 'y' : others" << std::endl;
 		std::cin >> input;
@@ -147,6 +148,10 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 		auto video_result_img = video_org_img.clone();
 		auto ortho_result_img = ortho_org_img.clone();
 
+		const auto result_tsv_path = std::format("io_images/ortho/{}_eval/result{}.tsv", video_code, experiment_id);
+		std::ofstream result_tsv_ofs(result_tsv_path);
+		result_tsv_ofs << std::string(" altitude \t transed \tcorrect \t error_distance [m] ") << std::endl;
+
 		const auto& points_num = g_selected_video_org_points.size();
 		for (size_t point_id = 0; point_id < points_num; point_id++)
 		{
@@ -171,6 +176,14 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 #endif
 			std::cout << "\n\n************\n\n" << std::endl;
 
+			result_tsv_ofs
+				<< std::format(" {} \t {} \t {} \t {} ",
+					std::format("({}, {})", video_point.x, video_point.y),
+					std::format("({}, {})", transformed_pt.x, transformed_pt.y),
+					std::format("({}, {})", correct_ortho_point.x, correct_ortho_point.y),
+					misalignment_norm)
+				<< std::endl;
+
 			cv::circle(video_result_img, video_point, 9, cv::Scalar(0, 0, 0), -1);
 			cv::circle(video_result_img, video_point, 7, cv::Scalar(0, 255, 0), -1);
 
@@ -181,9 +194,9 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 			cv::circle(ortho_result_img, static_cast<cv::Point>(correct_ortho_point), 10, cv::Scalar(0, 0, 255), -1);
 		}
 
-		auto eval_video_path = std::format("io_images/ortho/{}_eval/result{}_video.png", video_code, experiment_id);
+		const auto eval_video_path = std::format("io_images/ortho/{}_eval/result{}_video.png", video_code, experiment_id);
 		cv::imwrite(eval_video_path, video_result_img);
-		auto eval_ortho_path = std::format("io_images/ortho/{}_eval/result{}_ortho.png", video_code, experiment_id);
+		const auto eval_ortho_path = std::format("io_images/ortho/{}_eval/result{}_ortho.png", video_code, experiment_id);
 		cv::imwrite(eval_ortho_path, ortho_result_img);
 		experiment_id++;
 
