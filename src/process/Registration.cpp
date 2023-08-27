@@ -273,6 +273,8 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 	cv::Mat hmg_layer = cv::Mat::zeros(ortho.size(), ortho.type());
 	cv::Mat hmg_warp_result = ortho.clone();
 
+	std::ofstream ofs(std::format("io_images/{}/{}_warp/correct_points_code{}.txt", ortho_code, video_code, road_id));
+
 	for (int i = 0; i < points_num; i++)
 	{
 		const auto src_pts = video_points_list[i].get_pt_list();
@@ -283,16 +285,22 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 		const auto ortho_dir = ortho_points_list[i].line_dir_vec / ortho_points_list[i].line_length;
 		const auto length_ratio = ortho_points_list[i].line_length / video_points_list[i].line_length;
 
-		auto rect = video_points_list[i].get_bounding_rect();
+		const auto rect = video_points_list[i].get_bounding_rect();
 		cv::Mat contour_mask = cv::Mat::zeros(road_mask.size(), CV_8UC1);
 		video_points_list[i].fill_convex(contour_mask, cv::Scalar(255));
+
+		const auto ortho_mesh_center_pos = Img::calc_rect_center(ortho_points_list[i].get_bounding_rect());
+		ofs
+			<< std::format("g_correct_ortho_org_points.push_back(cv::Point2f({}, {}));"
+				, ortho_mesh_center_pos.x, ortho_mesh_center_pos.y)
+			<< std::endl;
 
 		for (int y = rect.y; y <= rect.br().y; y++)
 		{
 			for (int x = rect.x; x <= rect.br().x; x++)
 			{
 				const auto cur_point = cv::Point(x, y);
-				if (contour_mask.at<uint8_t>(cur_point) != 255)
+				if (!Img::is_on_mask(contour_mask, cur_point))
 					continue;
 
 				std::vector<cv::Point2f> dst_points, src_points{ static_cast<cv::Point2f>(cur_point) };

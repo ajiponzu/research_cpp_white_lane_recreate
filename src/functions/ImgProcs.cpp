@@ -1,6 +1,9 @@
 #include "../Functions.h"
 using namespace Func;
 
+static constexpr int g_BLOCK_WID = 100;
+static constexpr int g_BLOCK_HIGH = 100;
+
 // get white-lane areas
 // color-image-segmentation by k-means
 cv::Mat Img::get_white_lane(const cv::Mat& mat, const int& n_k)
@@ -176,4 +179,103 @@ void Func::Img::warp_img_by_hmg(const cv::Mat& src, cv::Mat& dst, cv::Mat& hmg_l
 
 	hmg_crop_result.copyTo(dst_crop);
 	hmg_crop_result.copyTo(hmg_layer_crop);
+}
+
+cv::Mat Img::binarize_img(cv::Mat& src, const int& output_channels)
+{
+	cv::Mat dst{};
+
+	if (src.channels() == 3)
+		cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
+	else
+		dst = src;
+
+	cv::threshold(dst, dst, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+	if (output_channels == 3)
+		cv::cvtColor(dst, dst, cv::COLOR_GRAY2BGR);
+
+	return dst;
+}
+
+cv::Mat Img::binarize_block_img(cv::Mat& src, const int& output_channels)
+{
+	cv::Mat dst{};
+
+	if (src.channels() == 3)
+		cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
+	else
+		dst = src.clone();
+
+	for (int y = 0; y < dst.rows; y += g_BLOCK_HIGH)
+	{
+		for (int x = 0; x < dst.cols; x += g_BLOCK_WID)
+		{
+			auto block = cv::Rect(x, y, std::min(g_BLOCK_WID, dst.cols - x), std::min(g_BLOCK_HIGH, dst.rows - y));
+			cv::Mat blockImg = dst(block);
+			cv::threshold(blockImg, blockImg, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+		}
+	}
+
+	if (output_channels == 3)
+		cv::cvtColor(dst, dst, cv::COLOR_GRAY2BGR);
+
+	return dst;
+}
+
+// 「https://www.web-dev-qa-db-ja.com/ja/c%2B%2B/%E7%94%BB%E5%83%8F%E3%81%AE%E7%B0%A1%E5%8D%98%E3%81%AA%E7%85%A7%E6%98%8E%E8%A3%9C%E6%AD%A3opencv-c/1047009394/」
+cv::Mat Img::contrast_local_area(cv::Mat& src)
+{
+	cv::Mat labImg, dst;
+	std::vector<cv::Mat> labs(3);
+	auto clahe = cv::createCLAHE();
+
+	cv::cvtColor(src, labImg, cv::COLOR_BGR2Lab);
+	cv::split(labImg, labs);
+	clahe->setClipLimit(3);
+	clahe->apply(labs[0], labs[0]);
+	cv::merge(labs, labImg);
+	cv::cvtColor(labImg, dst, cv::COLOR_Lab2BGR);
+
+	return dst;
+}
+
+cv::Mat Img::get_img_slice(const cv::Mat& src, const cv::Rect& area, const int& output_channels)
+{
+	cv::Mat dst = src(area);
+
+	if (output_channels == 1)
+		cv::cvtColor(dst, dst, cv::COLOR_BGR2GRAY);
+
+	return dst;
+}
+
+cv::Point Func::Img::calc_line_center(const cv::Point& pt1, const cv::Point& pt2)
+{
+	return (pt1 + pt2) / 2;
+}
+
+cv::Point Func::Img::calc_rect_center(const cv::Rect& rect)
+{
+	return (rect.tl() + rect.br()) / 2;
+}
+
+cv::Point2f Func::Img::calc_orthographic_vec(const cv::Point2f& ground_vec, const cv::Point2f& reflected_vec)
+{
+	return (ground_vec.dot(reflected_vec) / (float)std::pow(cv::norm(ground_vec), 2)) * ground_vec;
+}
+
+bool Func::Img::is_on_mask(const cv::Mat& mask, const cv::Point& pt)
+{
+	if (mask.channels() == 3)
+	{
+		cv::Mat mask_gray;
+		cv::cvtColor(mask, mask_gray, cv::COLOR_BGR2GRAY);
+
+		return is_on_mask(mask_gray, pt);
+	}
+
+	const auto pix = mask.at<uint8_t>(pt);
+
+	return pix > 0;
 }

@@ -17,6 +17,18 @@ namespace Func
 		// hmg_warp
 		void warp_img_by_hmg(const cv::Mat& src, cv::Mat& dst, cv::Mat& hmg_layer,
 			const std::vector<cv::Point2f>& src_pts, const std::vector<cv::Point2f>& dst_pts);
+
+		cv::Mat binarize_img(cv::Mat& src, const int& output_channels = 1);
+		cv::Mat binarize_block_img(cv::Mat& src, const int& output_channels = 1);
+		cv::Mat contrast_local_area(cv::Mat& src);
+		cv::Mat get_img_slice(const cv::Mat& src, const cv::Rect& area, const int& output_channels = 3);
+
+		cv::Point calc_line_center(const cv::Point& pt1, const cv::Point& pt2);
+		cv::Point calc_rect_center(const cv::Rect& rect);
+
+		cv::Point2f calc_orthographic_vec(const cv::Point2f& ground_vec, const cv::Point2f& reflected_vec);
+
+		bool is_on_mask(const cv::Mat& mask, const cv::Point& pt);
 	};
 
 	namespace GeoCvt
