@@ -47,5 +47,8 @@
     <ClInclude Include="src\eval\Eval.h">
       <Filter>eval</Filter>
     </ClInclude>
+    <ClInclude Include="src\eval\DataInsert.h">
+      <Filter>eval</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

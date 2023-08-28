@@ -143,6 +143,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch\stdafx.h" />
+    <ClInclude Include="src\eval\DataInsert.h" />
     <ClInclude Include="src\eval\Eval.h" />
     <ClInclude Include="src\Functions.h" />
     <ClInclude Include="src\Process.h" />

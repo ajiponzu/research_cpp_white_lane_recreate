@@ -1,6 +1,5 @@
 #include "Process.h"
 #include "Functions.h"
-
 #define TEST
 
 #ifdef TEST
@@ -8,14 +7,14 @@
 #include "eval/Eval.h"
 void test()
 {
-	const std::string video_code = "hiru";
-	//const std::string video_code = "yugata";
+	//const std::string video_code = "hiru";
+	const std::string video_code = "yugata";
 
 	const std::string ortho_code = "ortho";
 	const float meter_per_pix = 0.2f;
 
-	Eval::Run(video_code, ortho_code, meter_per_pix);
-	//PreMethodEval::Run(video_code, ortho_code, meter_per_pix);
+	Eval::Run(video_code, ortho_code, 4, meter_per_pix);
+	PreMethodEval::Run(video_code, ortho_code, 4, meter_per_pix);
 }
 
 #else
