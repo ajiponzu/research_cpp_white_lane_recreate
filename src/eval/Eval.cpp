@@ -279,9 +279,13 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 		auto video_result_img = video_org_img.clone();
 		auto ortho_result_img = ortho_org_img.clone();
 
-		const auto result_tsv_path = std::format("io_images/ortho/{}_eval/result{}.tsv", video_code, experiment_id);
+		const auto result_tsv_path = std::format("io_images/{}/{}_eval/result{}.tsv", ortho_code, video_code, experiment_id);
 		std::ofstream result_tsv_ofs(result_tsv_path);
 		result_tsv_ofs << std::string(" altitude \t transed \tcorrect \t error_distance [m] ") << std::endl;
+
+		const auto result_graph_csv_path = std::format("io_images/{}/{}_eval/result{}_graph.csv", ortho_code, video_code, experiment_id);
+		std::ofstream result_graph_csv_ofs(result_graph_csv_path);
+		result_graph_csv_ofs << std::string("altitude_x,altitude_y,error_distance [m]") << std::endl;
 
 		const auto& points_num = g_selected_video_org_points.size();
 		for (size_t point_id = 0; point_id < points_num; point_id++)
@@ -316,12 +320,20 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 					misalignment_norm)
 				<< std::endl;
 
-			draw_result_circle(video_result_img, ortho_result_img, video_point, correct_ortho_point, transformed_pt);
+			result_graph_csv_ofs
+				<< std::format("{},{},{}",
+					video_point.x,
+					video_point.y,
+					misalignment_norm)
+				<< std::endl;
+
+			draw_result_circle(video_result_img, ortho_result_img, video_point,
+				static_cast<cv::Point>(correct_ortho_point), static_cast<cv::Point>(transformed_pt));
 		}
 
-		const auto eval_video_path = std::format("io_images/ortho/{}_eval/result{}_video.png", video_code, experiment_id);
+		const auto eval_video_path = std::format("io_images/{}/{}_eval/result{}_video.png", ortho_code, video_code, experiment_id);
 		cv::imwrite(eval_video_path, video_result_img);
-		const auto eval_ortho_path = std::format("io_images/ortho/{}_eval/result{}_ortho.png", video_code, experiment_id);
+		const auto eval_ortho_path = std::format("io_images/{}/{}_eval/result{}_ortho.png", ortho_code, video_code, experiment_id);
 		cv::imwrite(eval_ortho_path, ortho_result_img);
 		experiment_id++;
 		reset_ui();
@@ -330,13 +342,13 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 
 void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_code, const int& road_num, const float& meter_per_pix)
 {
-	std::vector hmg_altitude_points = {
+	const std::vector hmg_altitude_points = {
 		cv::Point2f(500.f, 790.f),
 		cv::Point2f(550.f, 305.f),
 		cv::Point2f(1190.f, 303.f),
 		cv::Point2f(1450.f, 770.f)
 	};
-	std::vector hmg_ortho_points = {
+	const std::vector hmg_ortho_points = {
 		cv::Point2f(763.f, 1593.f),
 		cv::Point2f(1595.f, 45.f),
 		cv::Point2f(1770.f, 620.f),
@@ -396,9 +408,13 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 		auto video_result_img = video_org_img.clone();
 		auto ortho_result_img = ortho_org_img.clone();
 
-		const auto result_tsv_path = std::format("io_images/ortho/{}_eval/result_premethod{}.tsv", video_code, experiment_id);
+		const auto result_tsv_path = std::format("io_images/{}/{}_eval/result_premethod{}.tsv", ortho_code, video_code, experiment_id);
 		std::ofstream result_tsv_ofs(result_tsv_path);
 		result_tsv_ofs << std::string(" altitude \t transed \tcorrect \t error_distance [m] ") << std::endl;
+
+		const auto result_graph_csv_path = std::format("io_images/{}/{}_eval/result_premethod{}_graph.csv", ortho_code, video_code, experiment_id);
+		std::ofstream result_graph_csv_ofs(result_graph_csv_path);
+		result_graph_csv_ofs << std::string("altitude_x,altitude_y,error_distance [m]") << std::endl;
 
 		std::vector<cv::Point2f> transformed_points;
 		if (!g_selected_video_org_points.empty())
@@ -430,22 +446,30 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 					misalignment_norm)
 				<< std::endl;
 
-			draw_result_circle(video_result_img, ortho_result_img, video_point, correct_ortho_point, transformed_pt);
-			for (const auto& point : hmg_altitude_points)
+			result_graph_csv_ofs
+				<< std::format("{},{},{}",
+					video_point.x,
+					video_point.y,
+					misalignment_norm)
+				<< std::endl;
+
+			draw_result_circle(video_result_img, ortho_result_img, video_point,
+				static_cast<cv::Point>(correct_ortho_point), static_cast<cv::Point>(transformed_pt));
+			for (const auto& hmg_point : hmg_altitude_points)
 			{
-				cv::circle(video_img, point, g_VIDEO_CIRCLE_BLACK_RADIUS, cv::Scalar(0, 0, 0), -1);
-				cv::circle(video_img, point, g_VIDEO_CIRCLE_RADIUS, cv::Scalar(255, 0, 0), -1);
+				cv::circle(video_result_img, static_cast<cv::Point>(hmg_point), g_VIDEO_CIRCLE_BLACK_RADIUS * 2, cv::Scalar(0, 0, 0), -1);
+				cv::circle(video_result_img, static_cast<cv::Point>(hmg_point), g_VIDEO_CIRCLE_RADIUS * 2, cv::Scalar(255, 0, 0), -1);
 			}
-			for (const auto& point : hmg_ortho_points)
+			for (const auto& hmg_point : hmg_ortho_points)
 			{
-				cv::circle(ortho_img, point, g_ORTHO_CIRCLE_BLACK_RADIUS, cv::Scalar(0, 0, 0), -1);
-				cv::circle(ortho_img, point, g_ORTHO_CIRCLE_RADIUS, cv::Scalar(255, 0, 0), -1);
+				cv::circle(ortho_result_img, static_cast<cv::Point>(hmg_point), g_ORTHO_CIRCLE_BLACK_RADIUS * 2, cv::Scalar(0, 0, 0), -1);
+				cv::circle(ortho_result_img, static_cast<cv::Point>(hmg_point), g_ORTHO_CIRCLE_RADIUS * 2, cv::Scalar(255, 0, 0), -1);
 			}
 		}
 
-		const auto eval_video_path = std::format("io_images/ortho/{}_eval/result_premethod{}_video.png", video_code, experiment_id);
+		const auto eval_video_path = std::format("io_images/{}/{}_eval/result_premethod{}_video.png", ortho_code, video_code, experiment_id);
 		cv::imwrite(eval_video_path, video_result_img);
-		const auto eval_ortho_path = std::format("io_images/ortho/{}_eval/result_premethod{}_ortho.png", video_code, experiment_id);
+		const auto eval_ortho_path = std::format("io_images/{}/{}_eval/result_premethod{}_ortho.png", ortho_code, video_code, experiment_id);
 		cv::imwrite(eval_ortho_path, ortho_result_img);
 		experiment_id++;
 		reset_ui();
