@@ -246,7 +246,7 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 	uint64_t experiment_id = 0;
 #ifdef AUTO_EVAL
 	while (experiment_id < road_num)
-#elif
+#else
 	while (true)
 #endif
 	{
@@ -261,7 +261,7 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 #ifdef AUTO_EVAL
 		input_select_points(video_code, ortho_code, experiment_id);
 		input_correct_points(video_code, ortho_code, experiment_id);
-#elif
+#else
 		input_points_interface(video_code, ortho_code, video_img, ortho_img);
 #endif
 
@@ -375,7 +375,7 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 	uint64_t experiment_id = 0;
 #ifdef AUTO_EVAL
 	while (experiment_id < road_num)
-#elif
+#else
 	while (true)
 #endif
 	{
@@ -390,7 +390,7 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 #ifdef AUTO_EVAL
 		input_select_points(video_code, ortho_code, experiment_id);
 		input_correct_points(video_code, ortho_code, experiment_id);
-#elif
+#else
 		input_points_interface(video_code, ortho_code, video_img, ortho_img);
 #endif
 
