@@ -23,6 +23,9 @@
     <ClCompile Include="src\eval\Eval.cpp">
       <Filter>eval</Filter>
     </ClCompile>
+    <ClCompile Include="src\resource_provider\ResourceProvider.cpp">
+      <Filter>resource_provider</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="pch">
@@ -37,6 +40,9 @@
     <Filter Include="functions">
       <UniqueIdentifier>{91934ae8-78ed-431b-8ede-bcb0a7804db8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resource_provider">
+      <UniqueIdentifier>{d55c1b8b-2783-4c17-add6-7030d5018ea4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch\stdafx.h">
@@ -47,8 +53,6 @@
     <ClInclude Include="src\eval\Eval.h">
       <Filter>eval</Filter>
     </ClInclude>
-    <ClInclude Include="src\eval\DataInsert.h">
-      <Filter>eval</Filter>
-    </ClInclude>
+    <ClInclude Include="src\ResourceProvider.h" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,6 @@
 #include "Eval.h"
 #include "../Functions.h"
+#include "../ResourceProvider.h"
 
 #define AUTO_EVAL
 
@@ -141,9 +142,9 @@ static void input_points_interface(const std::string& video_code, const std::str
 	}
 }
 
-static void input_select_points(const std::string& video_code, const std::string& ortho_code, const uint64_t& experiment_id)
+static void input_select_points(const std::string& video_code, const uint64_t& experiment_id)
 {
-	std::ifstream ifs(std::format("io_images/{}/{}_warp/select_points_code{}.txt", ortho_code, video_code, experiment_id));
+	std::ifstream ifs(std::format("resources/eval/{}/select_points_code{}.txt", video_code, experiment_id));
 	while (ifs.eof() == false)
 	{
 		std::string line;
@@ -163,9 +164,9 @@ static void input_select_points(const std::string& video_code, const std::string
 	}
 }
 
-static void input_correct_points(const std::string& video_code, const std::string& ortho_code, const uint64_t& experiment_id)
+static void input_correct_points(const std::string& video_code, const uint64_t& experiment_id)
 {
-	std::ifstream ifs(std::format("io_images/{}/{}_warp/correct_points_code{}.txt", ortho_code, video_code, experiment_id));
+	std::ifstream ifs(std::format("resources/eval/{}/correct_points_code{}.txt", video_code, experiment_id));
 	while (ifs.eof() == false)
 	{
 		std::string line;
@@ -185,17 +186,17 @@ static void input_correct_points(const std::string& video_code, const std::strin
 	}
 }
 
-static void output_select_points_code(const std::string& video_code, const std::string& ortho_code, const uint64_t& experiment_id)
+static void output_select_points_code(const std::string& video_code, const uint64_t& experiment_id)
 {
-	std::ofstream ofs(std::format("io_images/{}/{}_warp/final_select_points_code{}.txt", ortho_code, video_code, experiment_id));
+	std::ofstream ofs(std::format("outputs/eval/{}/final_select_points_code{}.txt", video_code, experiment_id));
 
 	for (const auto& point : g_selected_video_org_points)
 		ofs << std::format("g_selected_video_org_points.push_back(cv::Point2f({}, {}));", point.x, point.y) << std::endl;
 }
 
-static void output_correct_points_code(const std::string& video_code, const std::string& ortho_code, const uint64_t& experiment_id)
+static void output_correct_points_code(const std::string& video_code, const uint64_t& experiment_id)
 {
-	std::ofstream ofs(std::format("io_images/{}/{}_warp/final_correct_points_code{}.txt", ortho_code, video_code, experiment_id));
+	std::ofstream ofs(std::format("outputs/eval/{}/final_correct_points_code{}.txt", video_code, experiment_id));
 
 	for (const auto& point : g_correct_ortho_org_points)
 		ofs << std::format("g_correct_ortho_org_points.push_back(cv::Point2f({}, {}));", point.x, point.y) << std::endl;
@@ -225,17 +226,17 @@ static void reset_ui()
 
 void Eval::Run(const std::string& video_code, const std::string& ortho_code, const int& road_num, const float& meter_per_pix)
 {
-	cv::Mat transed_points_map = Func::GeoCvt::get_float_tif(std::format("io_images/{}/transed_points_map.tif", video_code));
-	cv::Mat lanes_inf_map = Func::GeoCvt::get_float_tif(std::format("io_images/{}/lanes_inf_map.tif", video_code));
+	cv::Mat transed_points_map = Func::GeoCvt::get_float_tif(std::format("outputs/{}/transed_points_map.tif", video_code));
+	cv::Mat lanes_inf_map = Func::GeoCvt::get_float_tif(std::format("outputs/{}/lanes_inf_map.tif", video_code));
 
-	auto video_img = cv::imread(std::format("io_images/{}/background.png", video_code));
-	auto ortho_img = Func::GeoCvt::get_multicolor_mat(std::format("resources/{}/ortho.tif", ortho_code));
+	auto video_img = ResourceProvider::GetProcessOutput(std::format("{}_non_cars", video_code)).clone();
+	auto ortho_img = ResourceProvider::GetOrthoTif().clone();
 
 	auto video_org_img = video_img.clone();
 	auto ortho_org_img = ortho_img.clone();
 
-	const auto video_mask = cv::imread(std::format("resources/{}/road_mask.png", video_code));
-	const auto ortho_mask = cv::imread(std::format("resources/{}/road_mask.png", ortho_code));
+	const auto& video_mask = ResourceProvider::GetRoadMask(std::format("{}_road_mask", video_code));
+	const auto& ortho_mask = ResourceProvider::GetRoadMask(std::format("{}_road_mask", ortho_code));
 
 	cv::addWeighted(video_org_img, 0.85, video_mask, 0.15, 1.0, video_org_img);
 	cv::addWeighted(ortho_org_img, 0.85, ortho_mask, 0.15, 1.0, ortho_org_img);
@@ -259,8 +260,8 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 #endif
 
 #ifdef AUTO_EVAL
-		input_select_points(video_code, ortho_code, experiment_id);
-		input_correct_points(video_code, ortho_code, experiment_id);
+		input_select_points(video_code, experiment_id);
+		input_correct_points(video_code, experiment_id);
 #else
 		input_points_interface(video_code, ortho_code, video_img, ortho_img);
 #endif
@@ -279,11 +280,11 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 		auto video_result_img = video_org_img.clone();
 		auto ortho_result_img = ortho_org_img.clone();
 
-		const auto result_tsv_path = std::format("io_images/{}/{}_eval/result{}.tsv", ortho_code, video_code, experiment_id);
+		const auto result_tsv_path = std::format("outputs/eval/{}/result{}.tsv", video_code, experiment_id);
 		std::ofstream result_tsv_ofs(result_tsv_path);
 		result_tsv_ofs << std::string(" altitude \t transed \tcorrect \t error_distance [m] ") << std::endl;
 
-		const auto result_graph_csv_path = std::format("io_images/{}/{}_eval/result{}_graph.csv", ortho_code, video_code, experiment_id);
+		const auto result_graph_csv_path = std::format("outputs/eval/{}/result{}_graph.csv", video_code, experiment_id);
 		std::ofstream result_graph_csv_ofs(result_graph_csv_path);
 		result_graph_csv_ofs << std::string("altitude_x,altitude_y,error_distance [m]") << std::endl;
 
@@ -331,9 +332,9 @@ void Eval::Run(const std::string& video_code, const std::string& ortho_code, con
 				static_cast<cv::Point>(correct_ortho_point), static_cast<cv::Point>(transformed_pt));
 		}
 
-		const auto eval_video_path = std::format("io_images/{}/{}_eval/result{}_video.png", ortho_code, video_code, experiment_id);
+		const auto eval_video_path = std::format("outputs/eval/{}/result{}_video.png", video_code, experiment_id);
 		cv::imwrite(eval_video_path, video_result_img);
-		const auto eval_ortho_path = std::format("io_images/{}/{}_eval/result{}_ortho.png", ortho_code, video_code, experiment_id);
+		const auto eval_ortho_path = std::format("outputs/eval/{}/result{}_ortho.png", video_code, experiment_id);
 		cv::imwrite(eval_ortho_path, ortho_result_img);
 		experiment_id++;
 		reset_ui();
@@ -357,14 +358,14 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 
 	const auto hmg_mat = cv::getPerspectiveTransform(hmg_altitude_points, hmg_ortho_points);
 
-	auto video_img = cv::imread(std::format("io_images/{}/background.png", video_code));
-	auto ortho_img = Func::GeoCvt::get_multicolor_mat(std::format("resources/{}/ortho.tif", ortho_code));
+	auto video_img = ResourceProvider::GetProcessOutput(std::format("{}_non_cars", video_code)).clone();
+	auto ortho_img = ResourceProvider::GetOrthoTif().clone();
 
 	auto video_org_img = video_img.clone();
 	auto ortho_org_img = ortho_img.clone();
 
-	const auto video_mask = cv::imread(std::format("resources/{}/road_mask.png", video_code));
-	const auto ortho_mask = cv::imread(std::format("resources/{}/road_mask.png", ortho_code));
+	const auto& video_mask = ResourceProvider::GetRoadMask(std::format("{}_road_mask", video_code));
+	const auto& ortho_mask = ResourceProvider::GetRoadMask(std::format("{}_road_mask", ortho_code));
 
 	cv::addWeighted(video_org_img, 0.85, video_mask, 0.15, 1.0, video_org_img);
 	cv::addWeighted(ortho_org_img, 0.85, ortho_mask, 0.15, 1.0, ortho_org_img);
@@ -388,8 +389,8 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 #endif
 
 #ifdef AUTO_EVAL
-		input_select_points(video_code, ortho_code, experiment_id);
-		input_correct_points(video_code, ortho_code, experiment_id);
+		input_select_points(video_code, experiment_id);
+		input_correct_points(video_code, experiment_id);
 #else
 		input_points_interface(video_code, ortho_code, video_img, ortho_img);
 #endif
@@ -408,11 +409,11 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 		auto video_result_img = video_org_img.clone();
 		auto ortho_result_img = ortho_org_img.clone();
 
-		const auto result_tsv_path = std::format("io_images/{}/{}_eval/result_premethod{}.tsv", ortho_code, video_code, experiment_id);
+		const auto result_tsv_path = std::format("outputs/eval/{}/result_premethod{}.tsv", video_code, experiment_id);
 		std::ofstream result_tsv_ofs(result_tsv_path);
 		result_tsv_ofs << std::string(" altitude \t transed \tcorrect \t error_distance [m] ") << std::endl;
 
-		const auto result_graph_csv_path = std::format("io_images/{}/{}_eval/result_premethod{}_graph.csv", ortho_code, video_code, experiment_id);
+		const auto result_graph_csv_path = std::format("outputs/eval/{}/result_premethod{}_graph.csv", video_code, experiment_id);
 		std::ofstream result_graph_csv_ofs(result_graph_csv_path);
 		result_graph_csv_ofs << std::string("altitude_x,altitude_y,error_distance [m]") << std::endl;
 
@@ -467,9 +468,9 @@ void PreMethodEval::Run(const std::string& video_code, const std::string& ortho_
 			}
 		}
 
-		const auto eval_video_path = std::format("io_images/{}/{}_eval/result_premethod{}_video.png", ortho_code, video_code, experiment_id);
+		const auto eval_video_path = std::format("outputs/eval/{}/result_premethod{}_video.png", video_code, experiment_id);
 		cv::imwrite(eval_video_path, video_result_img);
-		const auto eval_ortho_path = std::format("io_images/{}/{}_eval/result_premethod{}_ortho.png", ortho_code, video_code, experiment_id);
+		const auto eval_ortho_path = std::format("outputs/eval/{}/result_premethod{}_ortho.png", video_code, experiment_id);
 		cv::imwrite(eval_ortho_path, ortho_result_img);
 		experiment_id++;
 		reset_ui();

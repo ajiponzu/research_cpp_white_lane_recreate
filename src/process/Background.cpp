@@ -4,7 +4,7 @@ void Background::Create(const std::string& video_code,
 	const size_t& spend_time, const int& history, const double& thr)
 {
 	const auto i_v_path = std::format("resources/{}/input.mp4", video_code);
-	const auto o_img_path = std::format("io_images/{}/background.png", video_code);
+	const auto o_img_path = std::format("outputs/{}/background.bmp", video_code);
 
 	auto video_cap = cv::VideoCapture(i_v_path);
 	if (!video_cap.isOpened())
@@ -39,7 +39,9 @@ void Background::Create(const std::string& video_code,
 
 	cv::Mat bg;
 	p_bg_subtr->getBackgroundImage(bg);
+	bg.convertTo(bg, CV_8UC3);
 	cv::imwrite(o_img_path, bg);
+	ResourceProvider::SetProcessOutput(std::format("{}_non_cars", video_code), bg);
 
 	std::cout << "background has been created..." << std::endl;
 	video_cap.release();

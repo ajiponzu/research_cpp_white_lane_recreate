@@ -1,4 +1,5 @@
 #pragma once
+#include "ResourceProvider.h"
 
 namespace Background
 {

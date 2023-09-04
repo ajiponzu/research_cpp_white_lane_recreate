@@ -184,10 +184,12 @@ void Registration::Registrator::DivideRoadByLane(const std::string& code, const 
 	m_pointsListHashes[road_id][code] = std::vector<PosVec>();
 	auto& pointsList = m_pointsListHashes[road_id][code];
 
-	const auto road_mask_path = std::format("resources/{}/road_mask{}.png", code, road_id);
-	const auto lane_img_path = std::format("io_images/{}/lane{}.png", code, road_id);
-	const auto road_mask = cv::imread(road_mask_path, cv::IMREAD_GRAYSCALE);
-	const auto lane_img = cv::imread(lane_img_path, cv::IMREAD_GRAYSCALE);
+	cv::Mat road_mask;
+	cv::Mat lane_img;
+
+	cv::cvtColor(ResourceProvider::GetRoadMask(std::format("{}_road_mask{}", code, road_id)), road_mask, cv::COLOR_BGR2GRAY);
+	cv::cvtColor(ResourceProvider::GetProcessOutput(std::format("{}_lane{}", code, road_id)), lane_img, cv::COLOR_BGR2GRAY);
+
 	auto lane_result = lane_img.clone();
 	cv::cvtColor(lane_result, lane_result, cv::COLOR_GRAY2BGR);
 	auto lane_corners_result = lane_result.clone();
@@ -236,13 +238,58 @@ void Registration::Registrator::DivideRoadByLane(const std::string& code, const 
 			pointsList.push_back(corners);
 		}
 	}
-	cv::imwrite(std::format("io_images/{}/road_corners{}.png", code, road_id), lane_corners_result);
+	cv::imwrite(std::format("outputs/{}/road_corners{}.bmp", code, road_id), lane_corners_result);
 }
 
 void Registration::Registrator::DivideRoadsByLane(const std::string& code)
 {
 	for (int i = 0; i < m_roadNum; i++)
 		DivideRoadByLane(code, i);
+}
+
+static std::vector<cv::Point2f> g_bezier_alt_control_points[3];
+static std::vector<cv::Point2f> g_bezier_ortho_control_points[3];
+
+static void calc_bezier_point(cv::Mat& img, const std::vector<cv::Point2f>& bezier_points, const float& bezier_const_t)
+{
+	if (bezier_points.size() == 1)
+	{
+		cv::circle(img, bezier_points[0], 1, cv::Scalar(0, 0, 255), -1);
+	}
+	else
+	{
+		std::vector<cv::Point2f> new_points;
+		for (size_t i = 0; i < (bezier_points.size() - 1); i++)
+			new_points.push_back((1.0f - bezier_const_t) * bezier_points[i] + bezier_const_t * bezier_points[i + 1]);
+		if (bezier_points.size() == 2)
+			cv::line(img, bezier_points[0], bezier_points[1], cv::Scalar(255, 0, 0), 1);
+		calc_bezier_point(img, new_points, bezier_const_t);
+	}
+}
+
+static void view_bezier(const int& road_id)
+{
+	auto alt_img = cv::imread("outputs/hiru/background.bmp");
+	auto ortho_img = GeoCvt::get_multicolor_mat("resources/ortho/ortho.tif");
+
+	static constexpr int s_bezier_itr_count = 1000;
+	static constexpr float s_bezier_itr_count_rev = 1.0f / s_bezier_itr_count;
+
+	std::cout << g_bezier_alt_control_points[1].size() << std::endl;
+
+	for (int j = 0; j < 3; j++)
+	{
+		for (int i = 0; i <= s_bezier_itr_count; i++)
+		{
+			calc_bezier_point(alt_img, g_bezier_alt_control_points[j], s_bezier_itr_count_rev * i);
+			calc_bezier_point(ortho_img, g_bezier_ortho_control_points[j], s_bezier_itr_count_rev * i);
+		}
+		g_bezier_alt_control_points[j].clear();
+		g_bezier_ortho_control_points[j].clear();
+	}
+
+	cv::imwrite(std::format("outputs/alt_bezier{}.bmp", road_id), alt_img);
+	cv::imwrite(std::format("outputs/ortho_bezier{}.bmp", road_id), ortho_img);
 }
 
 std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(const std::string& video_code, const std::string& ortho_code, const int& road_id)
@@ -258,28 +305,25 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 	}
 	const auto points_num = static_cast<int>(video_points_list.size());
 
-	const auto road_mask_path = std::format("resources/{}/road_mask{}.png", video_code, road_id);
-	const auto ortho_img_path = std::format("resources/{}/ortho.tif", ortho_code);
-	const auto dsm_img_path = std::format("resources/{}/dsm.tif", ortho_code);
-	const auto bg_img_path = std::format("io_images/{}/background.png", video_code);
+	const auto ortho_warp_path = std::format("outputs/{}/{}/hmg_ortho_warp{}.bmp", ortho_code, video_code, road_id);
+	const auto warp_layer_path = std::format("outputs/{}/{}/hmg_warp_layer{}.bmp", ortho_code, video_code, road_id);
 
-	const auto ortho_warp_path = std::format("io_images/{}/{}_warp/hmg_ortho_warp{}.png", ortho_code, video_code, road_id);
-	const auto warp_layer_path = std::format("io_images/{}/{}_warp/hmg_warp_layer{}.png", ortho_code, video_code, road_id);
-
-	const auto road_mask = cv::imread(road_mask_path);
-	const auto ortho = GeoCvt::get_multicolor_mat(ortho_img_path);
-	const auto dsm = GeoCvt::get_float_tif(dsm_img_path);
-	const auto bg = cv::imread(bg_img_path);
+	const auto& road_mask = ResourceProvider::GetRoadMask(std::format("{}_road_mask{}", video_code, road_id));
+	const auto& ortho = ResourceProvider::GetOrthoTif();
+	const auto& dsm = ResourceProvider::GetOrthoDsm();
+	const auto& bg = ResourceProvider::GetProcessOutput(std::format("{}_non_cars", video_code));
 	cv::Mat transed_points_map = cv::Mat::zeros(road_mask.size(), CV_32FC4);
 	cv::Mat lanes_inf_map = cv::Mat::zeros(road_mask.size(), CV_32FC4);
 	cv::Mat hmg_layer = cv::Mat::zeros(ortho.size(), ortho.type());
 	cv::Mat hmg_warp_result = ortho.clone();
 
 #ifdef OUTPUT_MESH_CENTER
-	std::ofstream ofs_select(std::format("io_images/{}/{}_warp/select_points_code{}.txt", ortho_code, video_code, road_id));
-	std::ofstream ofs_correct(std::format("io_images/{}/{}_warp/correct_points_code{}.txt", ortho_code, video_code, road_id));
+	std::ofstream ofs_select(std::format("resources/eval/{}/select_points_code{}.txt", video_code, road_id));
+	std::ofstream ofs_correct(std::format("resources/eval/{}/correct_points_code{}.txt", video_code, road_id));
 #endif
 
+	int bezier_start_i = 1;
+	int bezier_end_i = points_num - 2;
 	for (int i = 0; i < points_num; i++)
 	{
 		const auto src_pts = video_points_list[i].get_pt_list();
@@ -293,6 +337,36 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 		const auto rect = video_points_list[i].get_bounding_rect();
 		cv::Mat contour_mask = cv::Mat::zeros(road_mask.size(), CV_8UC1);
 		video_points_list[i].fill_convex(contour_mask, cv::Scalar(255));
+
+		if (i == bezier_start_i)
+		{
+			g_bezier_alt_control_points[1].push_back((video_points_list[i].bl + video_points_list[i].br) / 2);
+			g_bezier_ortho_control_points[1].push_back((ortho_points_list[i].bl + ortho_points_list[i].br) / 2);
+		}
+		else if (i == bezier_end_i)
+		{
+			g_bezier_alt_control_points[1].push_back((video_points_list[i].tl + video_points_list[i].tr) / 2);
+			g_bezier_ortho_control_points[1].push_back((ortho_points_list[i].tl + ortho_points_list[i].tr) / 2);
+		}
+		else if (i % 3 == 1)
+		{
+			g_bezier_alt_control_points[1].push_back(Img::calc_rect_center(video_points_list[i].get_bounding_rect()));
+			g_bezier_ortho_control_points[1].push_back(Img::calc_rect_center(ortho_points_list[i].get_bounding_rect()));
+		}
+		else if (i % 3 == 0)
+		{
+			g_bezier_alt_control_points[0].push_back(video_points_list[i].bl);
+			g_bezier_alt_control_points[0].push_back(video_points_list[i].tl);
+			g_bezier_ortho_control_points[0].push_back(ortho_points_list[i].bl);
+			g_bezier_ortho_control_points[0].push_back(ortho_points_list[i].tl);
+		}
+		else if (i % 3 == 2)
+		{
+			g_bezier_alt_control_points[2].push_back(video_points_list[i].br);
+			g_bezier_alt_control_points[2].push_back(video_points_list[i].tr);
+			g_bezier_ortho_control_points[2].push_back(ortho_points_list[i].br);
+			g_bezier_ortho_control_points[2].push_back(ortho_points_list[i].tr);
+		}
 
 #ifdef OUTPUT_MESH_CENTER
 		const auto video_mesh_center_pos = Img::calc_rect_center(video_points_list[i].get_bounding_rect());
@@ -336,6 +410,8 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 	cv::imwrite(ortho_warp_path, hmg_warp_result);
 	cv::imwrite(warp_layer_path, hmg_layer);
 
+	view_bezier(road_id);
+
 	return { transed_points_map, lanes_inf_map };
 }
 
@@ -349,6 +425,6 @@ void Registration::Registrator::DrawRoadsByDividedArea(const std::string& video_
 		transed_points_map_img += transed_points_map;
 		lanes_inf_map_img += lanes_inf_map;
 	}
-	cv::imwrite(std::format("io_images/{}/transed_points_map.tif", video_code), transed_points_map_img);
-	cv::imwrite(std::format("io_images/{}/lanes_inf_map.tif", video_code), lanes_inf_map_img);
+	cv::imwrite(std::format("outputs/{}/transed_points_map.tif", video_code), transed_points_map_img);
+	cv::imwrite(std::format("outputs/{}/lanes_inf_map.tif", video_code), lanes_inf_map_img);
 }

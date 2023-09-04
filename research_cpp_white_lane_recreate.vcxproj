@@ -140,13 +140,14 @@
     <ClCompile Include="src\process\Background.cpp" />
     <ClCompile Include="src\process\LaneDetection.cpp" />
     <ClCompile Include="src\process\Registration.cpp" />
+    <ClCompile Include="src\resource_provider\ResourceProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch\stdafx.h" />
-    <ClInclude Include="src\eval\DataInsert.h" />
     <ClInclude Include="src\eval\Eval.h" />
     <ClInclude Include="src\Functions.h" />
     <ClInclude Include="src\Process.h" />
+    <ClInclude Include="src\ResourceProvider.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
