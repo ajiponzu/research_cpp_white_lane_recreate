@@ -6,7 +6,7 @@ using namespace Func;
 
 struct Points4
 {
-	Registration::PosVec pos_vec;
+	Registration::MeshRect mesh_rect;
 
 	cv::Point2f top_v;
 	cv::Point2f rev_top_v;
@@ -20,7 +20,7 @@ struct Points4
 
 	void output_pts() const
 	{
-		pos_vec.output_pts();
+		mesh_rect.output_pts();
 	}
 
 	void output_tb_vecs() const
@@ -46,9 +46,9 @@ struct Points4
 	void set_points(const cv::RotatedRect& rotated_rect, const bool& is_rotated)
 	{
 		if (is_rotated)
-			rotated_rect.points(&(pos_vec.bl));
+			rotated_rect.points(&(mesh_rect.bl));
 		else
-			pos_vec = Registration::PosVec(rotated_rect.boundingRect2f());
+			mesh_rect = Registration::MeshRect(rotated_rect.boundingRect2f());
 
 		create_tb_vectors();
 		create_lr_vectors();
@@ -60,14 +60,15 @@ struct Points4
 
 		while (white_lane.which_use_vectors())
 		{
-			white_lane.pos_vec.arrange_pos();
+			white_lane.mesh_rect.arrange_pos();
 			white_lane.create_tb_vectors();
 			white_lane.create_lr_vectors();
 		}
 
-		const auto vec = white_lane.pos_vec.bl - white_lane.pos_vec.tl;
-		white_lane.pos_vec.line_dir_vec = vec;
-		white_lane.pos_vec.line_length = cv::norm(vec);
+		const auto vec = white_lane.mesh_rect.bl - white_lane.mesh_rect.tl;
+		white_lane.mesh_rect.line_dir_vec = vec;
+		white_lane.mesh_rect.line_length = cv::norm(vec);
+		white_lane.mesh_rect.is_white_lane_mesh = true;
 
 		return white_lane;
 	}
@@ -75,14 +76,14 @@ struct Points4
 private:
 	void create_top_vector()
 	{
-		top_v = pos_vec.tr - pos_vec.tl;
+		top_v = mesh_rect.tr - mesh_rect.tl;
 		top_v = top_v / cv::norm(top_v);
 		rev_top_v = cv::Point2f(0, 0) - top_v;
 	}
 
 	void create_btm_vector()
 	{
-		btm_v = pos_vec.br - pos_vec.bl;
+		btm_v = mesh_rect.br - mesh_rect.bl;
 		btm_v = btm_v / cv::norm(btm_v);
 		rev_btm_v = cv::Point2f(0, 0) - btm_v;
 	}
@@ -95,14 +96,14 @@ private:
 
 	void create_left_vector()
 	{
-		left_v = pos_vec.bl - pos_vec.tl;
+		left_v = mesh_rect.bl - mesh_rect.tl;
 		left_v = left_v / cv::norm(left_v);
 		rev_left_v = cv::Point2f(0, 0) - left_v;
 	}
 
 	void create_right_vector()
 	{
-		right_v = pos_vec.br - pos_vec.tr;
+		right_v = mesh_rect.br - mesh_rect.tr;
 		right_v = right_v / cv::norm(right_v);
 		rev_right_v = cv::Point2f(0, 0) - right_v;
 	}
@@ -116,7 +117,7 @@ private:
 	// true: tb_vectors; norm(tb) < norm(lr), false: lr_vectors; not
 	bool which_use_vectors() const
 	{
-		return pos_vec.which_use_vectors();
+		return mesh_rect.which_use_vectors();
 	}
 };
 
@@ -134,54 +135,106 @@ static void search_road_corner(cv::Point2f& scanner, const cv::Point2f& vec, con
 	}
 }
 
-static void divide_area_by_white_lane(std::vector<Registration::PosVec>& area_list,
-	const Registration::PosVec& corners, const Points4& white_lane)
+static void divide_area_by_white_lane(std::vector<Registration::MeshRect>& area_list,
+	const Registration::MeshRect& corners, const Points4& white_lane)
 {
 	auto area_l = corners;
-	area_l.tr = white_lane.pos_vec.tl;
-	area_l.br = white_lane.pos_vec.bl;
+	area_l.tr = white_lane.mesh_rect.tl;
+	area_l.br = white_lane.mesh_rect.bl;
 
 	auto area_r = corners;
-	area_r.tl = white_lane.pos_vec.tr;
-	area_r.bl = white_lane.pos_vec.br;
+	area_r.tl = white_lane.mesh_rect.tr;
+	area_r.bl = white_lane.mesh_rect.br;
 
-	area_l.line_dir_vec = area_r.line_dir_vec = white_lane.pos_vec.line_dir_vec;
-	area_l.line_length = area_r.line_length = white_lane.pos_vec.line_length;
+	area_l.line_dir_vec = area_r.line_dir_vec = white_lane.mesh_rect.line_dir_vec;
+	area_l.line_length = area_r.line_length = white_lane.mesh_rect.line_length;
 
 	area_list.push_back(area_l);
-	area_list.push_back(white_lane.pos_vec);
+	area_list.push_back(white_lane.mesh_rect);
 	area_list.push_back(area_r);
 }
 
-static std::vector<Registration::PosVec> search_road_corners(const Points4& points, const cv::Mat& bin_img)
+static std::vector<Registration::MeshRect> search_road_corners(const Points4& points, const cv::Mat& bin_img)
 {
-	Registration::PosVec ans;
+	Registration::MeshRect ans;
 
-	cv::Point2f scanner = points.pos_vec.tl;
+	cv::Point2f scanner = points.mesh_rect.tl;
 	search_road_corner(scanner, points.rev_top_v, bin_img);
 	ans.tl = scanner;
 
-	scanner = points.pos_vec.tr;
+	scanner = points.mesh_rect.tr;
 	search_road_corner(scanner, points.top_v, bin_img);
 	ans.tr = scanner;
 
-	scanner = points.pos_vec.bl;
+	scanner = points.mesh_rect.bl;
 	search_road_corner(scanner, points.rev_btm_v, bin_img);
 	ans.bl = scanner;
 
-	scanner = points.pos_vec.br;
+	scanner = points.mesh_rect.br;
 	search_road_corner(scanner, points.btm_v, bin_img);
 	ans.br = scanner;
 
-	std::vector<Registration::PosVec> answers;
+	std::vector<Registration::MeshRect> answers;
 	divide_area_by_white_lane(answers, ans, points);
 
 	return answers;
 }
 
+static Registration::BezierPoint calc_bezier_point(const std::vector<cv::Point2f>& bezier_control_points, const float& bezier_const_t)
+{
+	static constexpr auto calc_dir_unit_vector
+		= [](const cv::Point2f& pt1, const cv::Point2f& pt2)
+		{
+			const auto dir_vec = pt1 - pt2;
+			const auto norm = (float)cv::norm(dir_vec);
+			return dir_vec / norm;
+		};
+
+	std::vector<cv::Point2f> new_points;
+	for (size_t i = 0; i < (bezier_control_points.size() - 1); i++)
+		new_points.push_back((1.0f - bezier_const_t) * bezier_control_points[i] + bezier_const_t * bezier_control_points[i + 1]);
+
+	if (bezier_control_points.size() == 2)
+		return Registration::BezierPoint(new_points[0], calc_dir_unit_vector(bezier_control_points[1], bezier_control_points[0]));
+	else if (bezier_control_points.size() < 2)
+		return Registration::BezierPoint();
+	else
+		return calc_bezier_point(new_points, bezier_const_t);
+}
+
+static void view_bezier(const std::vector<std::vector<cv::Point2f>>& bezier_control_points_list, const int& road_id)
+{
+	auto alt_img = cv::imread("outputs/hiru/background.bmp");
+
+	static constexpr int s_bezier_itr_count = 10000;
+	static constexpr float s_bezier_itr_count_rev = 1.0f / s_bezier_itr_count;
+
+	for (int j = 0; j < 3; j++)
+	{
+		for (int i = 0; i <= s_bezier_itr_count; i++)
+		{
+			const auto bezier_alt_point = calc_bezier_point(bezier_control_points_list[j], s_bezier_itr_count_rev * i);
+			cv::circle(alt_img, bezier_alt_point.point, 1, cv::Scalar(0, 0, 255), 1);
+		}
+	}
+
+	cv::imwrite(std::format("outputs/alt_bezier_curve{}.bmp", road_id), alt_img);
+}
+
+void Registration::Registrator::Run(const std::string& video_code, const std::string& ortho_code)
+{
+	for (int road_id = 0; road_id < m_roadNum; road_id++)
+	{
+		DivideRoadByLane(video_code, road_id);
+		DivideRoadByLane(ortho_code, road_id);
+		CalcSpecificBezierPoint(video_code, road_id);
+	}
+	DrawRoadsByDividedArea(video_code, ortho_code);
+}
+
 void Registration::Registrator::DivideRoadByLane(const std::string& code, const int& road_id)
 {
-	m_pointsListHashes[road_id][code] = std::vector<PosVec>();
+	m_pointsListHashes[road_id][code] = std::vector<MeshRect>();
 	auto& pointsList = m_pointsListHashes[road_id][code];
 
 	cv::Mat road_mask;
@@ -190,9 +243,8 @@ void Registration::Registrator::DivideRoadByLane(const std::string& code, const 
 	cv::cvtColor(ResourceProvider::GetRoadMask(std::format("{}_road_mask{}", code, road_id)), road_mask, cv::COLOR_BGR2GRAY);
 	cv::cvtColor(ResourceProvider::GetProcessOutput(std::format("{}_lane{}", code, road_id)), lane_img, cv::COLOR_BGR2GRAY);
 
-	auto lane_result = lane_img.clone();
-	cv::cvtColor(lane_result, lane_result, cv::COLOR_GRAY2BGR);
-	auto lane_corners_result = lane_result.clone();
+	auto lane_corners_result = lane_img.clone();
+	cv::cvtColor(lane_corners_result, lane_corners_result, cv::COLOR_GRAY2BGR);
 
 	std::vector<std::vector<cv::Point>> contours;
 	std::vector<cv::Vec4i> hierarchy;
@@ -201,6 +253,8 @@ void Registration::Registrator::DivideRoadByLane(const std::string& code, const 
 	const size_t bgn_idx = 0;
 	const size_t end_idx = contours.size() - 1;
 	cv::Scalar colors[2] = { cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0) };
+
+	auto view_img = ResourceProvider::GetProcessOutput(std::format("{}_non_cars", code)).clone();
 
 	std::vector<Points4> white_lanes;
 	for (size_t i = 0; i < contours.size(); i++)
@@ -225,11 +279,11 @@ void Registration::Registrator::DivideRoadByLane(const std::string& code, const 
 			const auto& prev_corners = pointsList[last_idx];
 			const std::vector points{ prev_corners.tl, corners.bl, corners.br, prev_corners.tr };
 
-			PosVec pos_vec(points);
-			const auto vec = pos_vec.bl - pos_vec.tl;
-			pos_vec.line_dir_vec = vec;
-			pos_vec.line_length = cv::norm(vec);
-			pointsList.push_back(pos_vec);
+			MeshRect mesh_rect(points);
+			const auto vec = mesh_rect.bl - mesh_rect.tl;
+			mesh_rect.line_dir_vec = vec;
+			mesh_rect.line_length = cv::norm(vec);
+			pointsList.push_back(mesh_rect);
 		}
 
 		for (const auto& corners : road_corners_list)
@@ -241,55 +295,103 @@ void Registration::Registrator::DivideRoadByLane(const std::string& code, const 
 	cv::imwrite(std::format("outputs/{}/road_corners{}.bmp", code, road_id), lane_corners_result);
 }
 
-void Registration::Registrator::DivideRoadsByLane(const std::string& code)
+void Registration::Registrator::CalcSpecificBezierPoint(const std::string& video_code, const int& road_id)
 {
-	for (int i = 0; i < m_roadNum; i++)
-		DivideRoadByLane(code, i);
-}
+	const auto& video_points_list = m_pointsListHashes[road_id][video_code];
+	auto& bezier_points_list = m_bezierPointsList[road_id];
+	bezier_points_list.resize(3);
 
-static std::vector<cv::Point2f> g_bezier_alt_control_points[3];
-static std::vector<cv::Point2f> g_bezier_ortho_control_points[3];
+	const auto points_num = static_cast<int>(video_points_list.size());
+	int bezier_start_mesh_idx = 1;
+	int bezier_end_mesh_idx = points_num - 2;
+	std::vector<std::vector<cv::Point2f>> bezier_control_points_list(3);
 
-static void calc_bezier_point(cv::Mat& img, const std::vector<cv::Point2f>& bezier_points, const float& bezier_const_t)
-{
-	if (bezier_points.size() == 1)
+	for (int mesh_idx = 0; mesh_idx < points_num; mesh_idx++)
 	{
-		cv::circle(img, bezier_points[0], 1, cv::Scalar(0, 0, 255), -1);
-	}
-	else
-	{
-		std::vector<cv::Point2f> new_points;
-		for (size_t i = 0; i < (bezier_points.size() - 1); i++)
-			new_points.push_back((1.0f - bezier_const_t) * bezier_points[i] + bezier_const_t * bezier_points[i + 1]);
-		if (bezier_points.size() == 2)
-			cv::line(img, bezier_points[0], bezier_points[1], cv::Scalar(255, 0, 0), 1);
-		calc_bezier_point(img, new_points, bezier_const_t);
-	}
-}
+		auto& bezier_control_points = bezier_control_points_list[mesh_idx % 3];
+		if (mesh_idx == bezier_start_mesh_idx)
+			bezier_control_points.push_back((video_points_list[mesh_idx].bl + video_points_list[mesh_idx].br) / 2);
+		else if (mesh_idx == bezier_end_mesh_idx)
+			bezier_control_points.push_back((video_points_list[mesh_idx].tl + video_points_list[mesh_idx].tr) / 2);
 
-static void view_bezier(const int& road_id)
-{
-	auto alt_img = cv::imread("outputs/hiru/background.bmp");
-	auto ortho_img = GeoCvt::get_multicolor_mat("resources/ortho/ortho.tif");
+		if (mesh_idx % 3 == 1)
+			bezier_control_points.push_back(Img::calc_rect_center(video_points_list[mesh_idx].get_bounding_rect()));
+		else if (mesh_idx % 3 == 0)
+		{
+			bezier_control_points.push_back(video_points_list[mesh_idx].bl);
+			bezier_control_points.push_back(video_points_list[mesh_idx].tl);
+		}
+		else if (mesh_idx % 3 == 2)
+		{
+			bezier_control_points.push_back(video_points_list[mesh_idx].br);
+			bezier_control_points.push_back(video_points_list[mesh_idx].tr);
+		}
+		bezier_points_list[mesh_idx % 3].push_back(Registration::BezierPoint());
+	}
 
 	static constexpr int s_bezier_itr_count = 1000;
 	static constexpr float s_bezier_itr_count_rev = 1.0f / s_bezier_itr_count;
-
-	std::cout << g_bezier_alt_control_points[1].size() << std::endl;
-
-	for (int j = 0; j < 3; j++)
-	{
-		for (int i = 0; i <= s_bezier_itr_count; i++)
+	static constexpr auto get_nearest_point
+		= [](const cv::Point2f& base, const Registration::BezierPoint& pt1, const Registration::BezierPoint& pt2)
 		{
-			calc_bezier_point(alt_img, g_bezier_alt_control_points[j], s_bezier_itr_count_rev * i);
-			calc_bezier_point(ortho_img, g_bezier_ortho_control_points[j], s_bezier_itr_count_rev * i);
+			if (cv::norm(pt1.point - base) < cv::norm(pt2.point - base))
+				return pt1;
+			else
+				return pt2;
+		};
+
+	auto alt_img = ResourceProvider::GetProcessOutput(std::format("{}_non_cars", video_code)).clone();
+
+	for (int bezier_count = 0; bezier_count <= s_bezier_itr_count; bezier_count++)
+	{
+		const auto bezier_point = calc_bezier_point(bezier_control_points_list[1], s_bezier_itr_count_rev * bezier_count);
+		for (int mesh_idx = 0, bezier_point_idx = 0; mesh_idx < points_num; mesh_idx++)
+		{
+			if (!video_points_list[mesh_idx].is_white_lane_mesh)
+				continue;
+
+			const auto bottom = Img::calc_line_center(video_points_list[mesh_idx].bl, video_points_list[mesh_idx].br);
+			bezier_points_list[1][bezier_point_idx] = get_nearest_point(bottom, bezier_points_list[1][bezier_point_idx], bezier_point);
+			bezier_point_idx++;
+
+			const auto top = Img::calc_line_center(video_points_list[mesh_idx].tl, video_points_list[mesh_idx].tr);
+			bezier_points_list[1][bezier_point_idx] = get_nearest_point(top, bezier_points_list[1][bezier_point_idx], bezier_point);
+			bezier_point_idx++;
 		}
-		g_bezier_alt_control_points[j].clear();
-		g_bezier_ortho_control_points[j].clear();
 	}
 
-	cv::imwrite(std::format("outputs/alt_bezier{}.bmp", road_id), alt_img);
-	cv::imwrite(std::format("outputs/ortho_bezier{}.bmp", road_id), ortho_img);
+	static constexpr auto get_nearest_tangent_point
+		= [](const Registration::BezierPoint& base, const Registration::BezierPoint& pt1, const Registration::BezierPoint& pt2)
+		{
+			if (std::abs(base.tangent_line_dir.dot(pt1.tangent_line_dir)) >
+				std::abs(base.tangent_line_dir.dot(pt2.tangent_line_dir)))
+				return pt1;
+			else
+				return pt2;
+		};
+	for (int bezier_count = 0; bezier_count <= s_bezier_itr_count; bezier_count++)
+	{
+		const auto bezier_point_left = calc_bezier_point(bezier_control_points_list[0], s_bezier_itr_count_rev * bezier_count);
+		const auto bezier_point_right = calc_bezier_point(bezier_control_points_list[2], s_bezier_itr_count_rev * bezier_count);
+
+		for (int bezier_point_idx = 0; bezier_point_idx < bezier_points_list[1].size(); bezier_point_idx++)
+		{
+			bezier_points_list[0][bezier_point_idx] = get_nearest_tangent_point(bezier_points_list[1][bezier_point_idx],
+				bezier_points_list[0][bezier_point_idx], bezier_point_left);
+			bezier_points_list[2][bezier_point_idx] = get_nearest_tangent_point(bezier_points_list[1][bezier_point_idx],
+				bezier_points_list[2][bezier_point_idx], bezier_point_right);
+		}
+	}
+
+	for (int bezier_point_idx = 0; bezier_point_idx < bezier_points_list[1].size(); bezier_point_idx++)
+	{
+		cv::circle(alt_img, bezier_points_list[0][bezier_point_idx].point, 1, cv::Scalar(0, 0, 255), -1);
+		cv::circle(alt_img, bezier_points_list[1][bezier_point_idx].point, 1, cv::Scalar(0, 0, 255), -1);
+		cv::circle(alt_img, bezier_points_list[2][bezier_point_idx].point, 1, cv::Scalar(0, 0, 255), -1);
+	}
+
+	cv::imwrite(std::format("outputs/alt_bezier_points{}.bmp", road_id), alt_img);
+	view_bezier(bezier_control_points_list, road_id);
 }
 
 std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(const std::string& video_code, const std::string& ortho_code, const int& road_id)
@@ -322,8 +424,6 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 	std::ofstream ofs_correct(std::format("resources/eval/{}/correct_points_code{}.txt", video_code, road_id));
 #endif
 
-	int bezier_start_i = 1;
-	int bezier_end_i = points_num - 2;
 	for (int i = 0; i < points_num; i++)
 	{
 		const auto src_pts = video_points_list[i].get_pt_list();
@@ -337,36 +437,6 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 		const auto rect = video_points_list[i].get_bounding_rect();
 		cv::Mat contour_mask = cv::Mat::zeros(road_mask.size(), CV_8UC1);
 		video_points_list[i].fill_convex(contour_mask, cv::Scalar(255));
-
-		if (i == bezier_start_i)
-		{
-			g_bezier_alt_control_points[1].push_back((video_points_list[i].bl + video_points_list[i].br) / 2);
-			g_bezier_ortho_control_points[1].push_back((ortho_points_list[i].bl + ortho_points_list[i].br) / 2);
-		}
-		else if (i == bezier_end_i)
-		{
-			g_bezier_alt_control_points[1].push_back((video_points_list[i].tl + video_points_list[i].tr) / 2);
-			g_bezier_ortho_control_points[1].push_back((ortho_points_list[i].tl + ortho_points_list[i].tr) / 2);
-		}
-		else if (i % 3 == 1)
-		{
-			g_bezier_alt_control_points[1].push_back(Img::calc_rect_center(video_points_list[i].get_bounding_rect()));
-			g_bezier_ortho_control_points[1].push_back(Img::calc_rect_center(ortho_points_list[i].get_bounding_rect()));
-		}
-		else if (i % 3 == 0)
-		{
-			g_bezier_alt_control_points[0].push_back(video_points_list[i].bl);
-			g_bezier_alt_control_points[0].push_back(video_points_list[i].tl);
-			g_bezier_ortho_control_points[0].push_back(ortho_points_list[i].bl);
-			g_bezier_ortho_control_points[0].push_back(ortho_points_list[i].tl);
-		}
-		else if (i % 3 == 2)
-		{
-			g_bezier_alt_control_points[2].push_back(video_points_list[i].br);
-			g_bezier_alt_control_points[2].push_back(video_points_list[i].tr);
-			g_bezier_ortho_control_points[2].push_back(ortho_points_list[i].br);
-			g_bezier_ortho_control_points[2].push_back(ortho_points_list[i].tr);
-		}
 
 #ifdef OUTPUT_MESH_CENTER
 		const auto video_mesh_center_pos = Img::calc_rect_center(video_points_list[i].get_bounding_rect());
@@ -410,18 +480,16 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 	cv::imwrite(ortho_warp_path, hmg_warp_result);
 	cv::imwrite(warp_layer_path, hmg_layer);
 
-	view_bezier(road_id);
-
 	return { transed_points_map, lanes_inf_map };
 }
 
 void Registration::Registrator::DrawRoadsByDividedArea(const std::string& video_code, const std::string& ortho_code)
 {
-	int i = 0;
-	auto [transed_points_map_img, lanes_inf_map_img] = DrawRoadByDividedArea(video_code, ortho_code, i);
-	for (i = 1; i < m_roadNum; i++)
+	int road_id = 0;
+	auto [transed_points_map_img, lanes_inf_map_img] = DrawRoadByDividedArea(video_code, ortho_code, road_id);
+	for (road_id = 1; road_id < m_roadNum; road_id++)
 	{
-		const auto& [transed_points_map, lanes_inf_map] = DrawRoadByDividedArea(video_code, ortho_code, i);
+		const auto& [transed_points_map, lanes_inf_map] = DrawRoadByDividedArea(video_code, ortho_code, road_id);
 		transed_points_map_img += transed_points_map;
 		lanes_inf_map_img += lanes_inf_map;
 	}

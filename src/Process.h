@@ -27,7 +27,7 @@ namespace LaneDetection
 
 namespace Registration
 {
-	struct PosVec
+	struct MeshRect
 	{
 		// RotatedRect.pointsで要求されるメモリレイアウトに準拠した順番
 		// 型が同じなので，順番を入れ替えても動作するが，確実にバグるので注意
@@ -38,9 +38,10 @@ namespace Registration
 
 		cv::Point2f line_dir_vec = cv::Point2f(0.0f, 0.0f);
 		double line_length = 0.0;
+		bool is_white_lane_mesh = false;
 
-		PosVec() = default;
-		PosVec(const cv::Rect2f& rect)
+		MeshRect() = default;
+		MeshRect(const cv::Rect2f& rect)
 		{
 			tl = rect.tl();
 			br = rect.br();
@@ -48,7 +49,7 @@ namespace Registration
 			bl = tl + cv::Point2f(0.0f, rect.height);
 		}
 		// points{a, b, c, d} -> bl = a, tl = b, tr = c, br = d;
-		PosVec(const std::vector<cv::Point2f>& points)
+		MeshRect(const std::vector<cv::Point2f>& points)
 		{
 			if (points.size() != 4)
 			{
@@ -104,19 +105,25 @@ namespace Registration
 		// 人の直感ベースで座標を割り当てなおす
 		void arrange_pos()
 		{
-			PosVec pos_vec = *this;
-			pos_vec.bl = br;
-			pos_vec.br = tr;
-			pos_vec.tr = tl;
-			pos_vec.tl = bl;
+			MeshRect mesh_rect = *this;
+			mesh_rect.bl = br;
+			mesh_rect.br = tr;
+			mesh_rect.tr = tl;
+			mesh_rect.tl = bl;
 
-			*this = pos_vec;
+			*this = mesh_rect;
 		}
 
 		std::vector<cv::Point2f> get_pt_list() const
 		{
 			return std::vector{ bl, tl, tr, br };
 		}
+	};
+
+	struct BezierPoint
+	{
+		cv::Point2f point;
+		cv::Point2f tangent_line_dir;
 	};
 
 	class Registrator
@@ -126,17 +133,19 @@ namespace Registration
 			: m_roadNum(road_num)
 		{
 			m_pointsListHashes.resize(road_num);
+			m_bezierPointsList.resize(road_num);
 		}
 
-		void DivideRoadsByLane(const std::string& code);
-		void DrawRoadsByDividedArea(const std::string& video_code,
-			const std::string& ortho_code);
+		void Run(const std::string& video_code, const std::string& ortho_code);
 
 	private:
-		std::vector<std::unordered_map<std::string, std::vector<PosVec>>> m_pointsListHashes;
+		std::vector<std::unordered_map<std::string, std::vector<MeshRect>>> m_pointsListHashes;
+		std::vector<std::vector<std::vector<BezierPoint>>> m_bezierPointsList;
 		int m_roadNum;
 
 		void DivideRoadByLane(const std::string& code, const int& road_id);
+		void CalcSpecificBezierPoint(const std::string& video_code, const int& road_id);
+		void DrawRoadsByDividedArea(const std::string& video_code, const std::string& ortho_code);
 		std::pair<cv::Mat, cv::Mat> DrawRoadByDividedArea(const std::string& video_code,
 			const std::string& ortho_code, const int& road_id);
 	};

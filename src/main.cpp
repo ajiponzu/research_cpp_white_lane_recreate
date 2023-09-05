@@ -43,9 +43,7 @@ void app()
 	//LaneDetection::Ortho::ChooseAllLanes(ortho_code, road_num);
 
 	Registration::Registrator registrator(road_num);
-	registrator.DivideRoadsByLane(video_code);
-	registrator.DivideRoadsByLane(ortho_code);
-	registrator.DrawRoadsByDividedArea(video_code, ortho_code);
+	registrator.Run(video_code, ortho_code);
 }
 
 #endif
