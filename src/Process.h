@@ -1,5 +1,6 @@
 #pragma once
 #include "ResourceProvider.h"
+#include "Functions.h"
 
 namespace Background
 {
@@ -61,6 +62,13 @@ namespace Registration
 			tr = points[2];
 			br = points[3];
 		}
+		MeshRect(const MeshRect& mesh_rect)
+		{
+			tl = mesh_rect.tl;
+			br = mesh_rect.br;
+			tr = mesh_rect.tr;
+			bl = mesh_rect.bl;
+		}
 
 		void output_pts() const
 		{
@@ -120,31 +128,22 @@ namespace Registration
 		}
 	};
 
-	struct BezierPoint
-	{
-		cv::Point2f point;
-		cv::Point2f tangent_line_dir;
-	};
-
 	class Registrator
 	{
 	public:
 		Registrator(const int& road_num)
 			: m_roadNum(road_num)
 		{
-			m_pointsListHashes.resize(road_num);
-			m_bezierPointsList.resize(road_num);
+			m_meshListHashes.resize(road_num);
 		}
 
 		void Run(const std::string& video_code, const std::string& ortho_code);
 
 	private:
-		std::vector<std::unordered_map<std::string, std::vector<MeshRect>>> m_pointsListHashes;
-		std::vector<std::vector<std::vector<BezierPoint>>> m_bezierPointsList;
+		std::vector<std::unordered_map<std::string, std::vector<MeshRect>>> m_meshListHashes;
 		int m_roadNum;
 
 		void DivideRoadByLane(const std::string& code, const int& road_id);
-		void CalcSpecificBezierPoint(const std::string& video_code, const int& road_id);
 		void DrawRoadsByDividedArea(const std::string& video_code, const std::string& ortho_code);
 		std::pair<cv::Mat, cv::Mat> DrawRoadByDividedArea(const std::string& video_code,
 			const std::string& ortho_code, const int& road_id);

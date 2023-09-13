@@ -2,7 +2,7 @@
 #include "Functions.h"
 #include "ResourceProvider.h"
 
-//#define TEST
+#define TEST
 
 #ifdef TEST
 

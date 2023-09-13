@@ -1,5 +1,4 @@
 #include "../Process.h"
-#include "../Functions.h"
 using namespace Func;
 
 void LaneDetection::Video::ExtractCandidate(const std::string& video_code)
