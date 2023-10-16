@@ -20,9 +20,6 @@
     <ClCompile Include="src\functions\ImgProcs.cpp">
       <Filter>functions</Filter>
     </ClCompile>
-    <ClCompile Include="src\eval\Eval.cpp">
-      <Filter>eval</Filter>
-    </ClCompile>
     <ClCompile Include="src\resource_provider\ResourceProvider.cpp">
       <Filter>resource_provider</Filter>
     </ClCompile>
@@ -33,9 +30,6 @@
     </Filter>
     <Filter Include="process">
       <UniqueIdentifier>{756c9477-fe3c-4923-9303-01176c61abfe}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="eval">
-      <UniqueIdentifier>{64bdd994-cc80-426d-8c6b-d52d826db1a0}</UniqueIdentifier>
     </Filter>
     <Filter Include="functions">
       <UniqueIdentifier>{91934ae8-78ed-431b-8ede-bcb0a7804db8}</UniqueIdentifier>
@@ -50,9 +44,6 @@
     </ClInclude>
     <ClInclude Include="src\Process.h" />
     <ClInclude Include="src\Functions.h" />
-    <ClInclude Include="src\eval\Eval.h">
-      <Filter>eval</Filter>
-    </ClInclude>
     <ClInclude Include="src\ResourceProvider.h" />
   </ItemGroup>
 </Project>

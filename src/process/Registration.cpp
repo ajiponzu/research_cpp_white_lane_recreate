@@ -1,8 +1,6 @@
 #include "../Process.h"
 using namespace Func;
 
-//#define OUTPUT_MESH_CENTER
-
 struct Points4
 {
 	Registration::MeshRect mesh_rect;
@@ -280,11 +278,6 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 	cv::Mat hmg_layer = cv::Mat::zeros(ortho.size(), ortho.type());
 	cv::Mat hmg_warp_result = ortho.clone();
 
-#ifdef OUTPUT_MESH_CENTER
-	std::ofstream ofs_select(std::format("resources/eval/{}/select_points_code{}.txt", video_code, road_id));
-	std::ofstream ofs_correct(std::format("resources/eval/{}/correct_points_code{}.txt", video_code, road_id));
-#endif
-
 	for (int mesh_idx = 0; mesh_idx < mesh_num; mesh_idx++)
 	{
 		const auto src_pts = video_mesh_list[mesh_idx].get_pt_list();
@@ -298,19 +291,6 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 		const auto rect = video_mesh_list[mesh_idx].get_bounding_rect();
 		cv::Mat contour_mask = cv::Mat::zeros(road_mask.size(), CV_8UC1);
 		video_mesh_list[mesh_idx].fill_convex(contour_mask, cv::Scalar(255));
-
-#ifdef OUTPUT_MESH_CENTER
-		const auto video_mesh_center_pos = Img::calc_rect_center(video_points_list[i].get_bounding_rect());
-		const auto ortho_mesh_center_pos = Img::calc_rect_center(ortho_points_list[i].get_bounding_rect());
-		ofs_select
-			<< std::format("{},{}"
-				, video_mesh_center_pos.x, video_mesh_center_pos.y)
-			<< std::endl;
-		ofs_correct
-			<< std::format("{},{}"
-				, ortho_mesh_center_pos.x, ortho_mesh_center_pos.y)
-			<< std::endl;
-#endif
 
 		for (int y = rect.y; y <= rect.br().y; y++)
 		{

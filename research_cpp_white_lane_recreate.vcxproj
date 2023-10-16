@@ -133,7 +133,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\eval\Eval.cpp" />
     <ClCompile Include="src\functions\GeoConverter.cpp" />
     <ClCompile Include="src\functions\ImgProcs.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -144,7 +143,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch\stdafx.h" />
-    <ClInclude Include="src\eval\Eval.h" />
     <ClInclude Include="src\Functions.h" />
     <ClInclude Include="src\Process.h" />
     <ClInclude Include="src\ResourceProvider.h" />
