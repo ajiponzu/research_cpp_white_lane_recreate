@@ -6,6 +6,7 @@ void app()
 {
 	const std::string video_code = "hiru";
 	//const std::string video_code = "yugata";
+	//const std::string video_code = "kitani";
 
 	const std::string ortho_code = "ortho";
 	const int road_num = 4;

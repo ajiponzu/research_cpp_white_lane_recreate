@@ -227,7 +227,7 @@ void Registration::Registrator::DivideRoadByLane(const std::string& code, const 
 
 	for (size_t white_lane_idx = 0; white_lane_idx < white_lanes.size(); white_lane_idx++)
 	{
-		const auto white_lane = white_lanes[white_lane_idx];
+		const auto& white_lane = white_lanes[white_lane_idx];
 		const auto road_corners_list = search_road_corners(white_lane, road_mask);
 
 		auto last_idx = mesh_list.size() - 3;
@@ -315,6 +315,7 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 				// opencvでBGRAの順でTif保存 ⇒ GDALだとRGBAの順
 				transed_points_map.at<cv::Vec4f>(cur_point) = cv::Vec4f(dsm_z, dst_point.y, dst_point.x, 255.0f); // 読み取りの際にx, y, z, マスクの順になるよう保存
 				lanes_inf_map.at<cv::Vec4f>(cur_point) = cv::Vec4f((float)length_ratio, ortho_dir.y, ortho_dir.x, 255.0f); // 読み取りの際にdir.x, dir.y, ratio, マスクの順になるよう保存
+				std::cout << length_ratio << ", " << ortho_dir << std::endl;
 			}
 		}
 	}

@@ -62,13 +62,6 @@ namespace Registration
 			tr = points[2];
 			br = points[3];
 		}
-		MeshRect(const MeshRect& mesh_rect)
-		{
-			tl = mesh_rect.tl;
-			br = mesh_rect.br;
-			tr = mesh_rect.tr;
-			bl = mesh_rect.bl;
-		}
 
 		void output_pts() const
 		{
