@@ -2,7 +2,7 @@
 #include "Functions.h"
 #include "ResourceProvider.h"
 
-void app()
+static void app()
 {
 	const std::string video_code = "hiru";
 	//const std::string video_code = "yugata";

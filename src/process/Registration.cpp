@@ -285,8 +285,8 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 		Func::Img::warp_img_by_hmg(bg, hmg_warp_result, hmg_layer, src_pts, dst_pts);
 
 		const auto hmg_mat = cv::getPerspectiveTransform(src_pts, dst_pts);
+		const auto video_dir = video_mesh_list[mesh_idx].line_dir_vec / video_mesh_list[mesh_idx].line_length;
 		const auto ortho_dir = ortho_mesh_list[mesh_idx].line_dir_vec / ortho_mesh_list[mesh_idx].line_length;
-		const auto length_ratio = ortho_mesh_list[mesh_idx].line_length / video_mesh_list[mesh_idx].line_length;
 
 		const auto rect = video_mesh_list[mesh_idx].get_bounding_rect();
 		cv::Mat contour_mask = cv::Mat::zeros(road_mask.size(), CV_8UC1);
@@ -314,8 +314,7 @@ std::pair<cv::Mat, cv::Mat> Registration::Registrator::DrawRoadByDividedArea(con
 				const auto& dsm_z = dsm.at<float>(static_cast<cv::Point>(dst_point));
 				// opencvでBGRAの順でTif保存 ⇒ GDALだとRGBAの順
 				transed_points_map.at<cv::Vec4f>(cur_point) = cv::Vec4f(dsm_z, dst_point.y, dst_point.x, 255.0f); // 読み取りの際にx, y, z, マスクの順になるよう保存
-				lanes_inf_map.at<cv::Vec4f>(cur_point) = cv::Vec4f((float)length_ratio, ortho_dir.y, ortho_dir.x, 255.0f); // 読み取りの際にdir.x, dir.y, ratio, マスクの順になるよう保存
-				std::cout << length_ratio << ", " << ortho_dir << std::endl;
+				lanes_inf_map.at<cv::Vec4f>(cur_point) = cv::Vec4f(ortho_dir.x, video_dir.y, video_dir.x, ortho_dir.y); // 読み取りの際にvideo_dir.x(y), ortho_dir.x(y)の順になるよう保存
 			}
 		}
 	}
